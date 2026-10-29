@@ -3,9 +3,20 @@ import cors from "cors";
 import { env } from "../infrastructure/config/env.js";
 import { healthRouter } from "./http/routes/health.routes.js";
 import { errorHandler } from "./http/middlewares/errorHandler.js";
+import { prisma } from "../infrastructure/database/prisma.js";
+import { PrismaProblemRepository } from "../infrastructure/repositories/PrismaProblemRepository.js";
+import { ProblemUseCases } from "../application/use-cases/ProblemUseCases.js";
+import { ProblemController } from "./http/controllers/problem.controller.js";
+import { createProblemRouter } from "./http/routes/problem.routes.js";
 
 export function createApp(): Express {
   const app = express();
+
+  // Inyección de dependencias para el módulo de problemas
+  const problemRepository = new PrismaProblemRepository(prisma);
+  const problemUseCases = new ProblemUseCases(problemRepository);
+  const problemController = new ProblemController(problemUseCases);
+  const problemRouter = createProblemRouter(problemController);
 
   // Configuración de CORS permitiendo orígenes del frontend
   app.use(
@@ -37,6 +48,7 @@ export function createApp(): Express {
 
   // Montar rutas base
   app.use("/health", healthRouter);
+  app.use("/api/problems", problemRouter);
 
   // Manejo centralizado de rutas no encontradas (404)
   app.use((_req, res) => {
