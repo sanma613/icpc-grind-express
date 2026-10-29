@@ -56,7 +56,7 @@ export function createApp(): Express {
         ) {
           return callback(null, true);
         }
-        return callback(new Error(`Bloqueado por política de CORS para el origen: ${origin}`));
+        return callback(null, false);
       },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
