@@ -1,0 +1,83 @@
+// Prisma schema para ICPC Grind (Entrega 3)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum Topic {
+  graphs
+  geometry
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum SuggestionStatus {
+  pending
+  approved
+  rejected
+}
+
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         Role         @default(user)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  suggestions  Suggestion[]
+
+  @@map("users")
+}
+
+model Problem {
+  id          Int          @id @default(autoincrement())
+  name        String
+  topic       Topic
+  difficulty  Difficulty
+  source      String
+  year        Int
+  link        String
+  description String       @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  suggestions Suggestion[]
+
+  @@map("problems")
+}
+
+model Suggestion {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId   Int?
+  problem     Problem?         @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  name        String
+  link        String
+  topic       Topic
+  difficulty  Difficulty
+  description String           @db.Text
+  status      SuggestionStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("suggestions")
+}
