@@ -1,9 +1,19 @@
 import { z } from "zod";
 
 export const problemFiltersSchema = z.object({
-  topic: z.enum(["graphs", "geometry"]).optional(),
-  difficulty: z.enum(["easy", "medium", "hard"]).optional(),
-  source: z.string().trim().optional(),
+  topic: z
+    .enum(["graphs", "geometry", "all"])
+    .optional()
+    .transform((val) => (val === "all" ? undefined : val)),
+  difficulty: z
+    .enum(["easy", "medium", "hard", "all"])
+    .optional()
+    .transform((val) => (val === "all" ? undefined : val)),
+  source: z
+    .string()
+    .trim()
+    .optional()
+    .transform((val) => (val === "all" ? undefined : val)),
   q: z.string().trim().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(50).default(6),
