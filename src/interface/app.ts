@@ -22,9 +22,12 @@ import { createSuggestionRouter } from "./http/routes/suggestion.routes.js";
 export function createApp(): Express {
   const app = express();
 
-  // Inyección de dependencias para el módulo de problemas
+  // Inyección de dependencias para los repositorios
   const problemRepository = new PrismaProblemRepository(prisma);
-  const problemUseCases = new ProblemUseCases(problemRepository);
+  const suggestionRepository = new PrismaSuggestionRepository(prisma);
+
+  // Módulo de problemas
+  const problemUseCases = new ProblemUseCases(problemRepository, suggestionRepository);
   const problemController = new ProblemController(problemUseCases);
   const problemRouter = createProblemRouter(problemController);
 
@@ -37,7 +40,6 @@ export function createApp(): Express {
   const authRouter = createAuthRouter(authController);
 
   // Inyección de dependencias para el módulo de sugerencias (interacción)
-  const suggestionRepository = new PrismaSuggestionRepository(prisma);
   const suggestionUseCases = new SuggestionUseCases(suggestionRepository, problemRepository);
   const suggestionController = new SuggestionController(suggestionUseCases);
   const suggestionRouter = createSuggestionRouter(suggestionController);

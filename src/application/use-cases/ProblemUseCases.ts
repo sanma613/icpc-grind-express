@@ -1,10 +1,14 @@
 import { IProblemRepository, PaginatedResult } from "../../domain/repositories/IProblemRepository.js";
+import { ISuggestionRepository } from "../../domain/repositories/ISuggestionRepository.js";
 import { ProblemEntity } from "../../domain/entities/Problem.js";
 import { ProblemFiltersDTO, CreateProblemDTO, UpdateProblemDTO } from "../dtos/problem.dto.js";
 import { NotFoundError } from "../../domain/errors/AppError.js";
 
 export class ProblemUseCases {
-  constructor(private readonly problemRepository: IProblemRepository) {}
+  constructor(
+    private readonly problemRepository: IProblemRepository,
+    private readonly suggestionRepository?: ISuggestionRepository
+  ) {}
 
   async getProblems(filters: ProblemFiltersDTO): Promise<PaginatedResult<ProblemEntity>> {
     return this.problemRepository.findMany(filters);
@@ -31,6 +35,9 @@ export class ProblemUseCases {
   }
 
   async deleteProblem(id: number): Promise<void> {
+    if (this.suggestionRepository) {
+      await this.suggestionRepository.unlinkOrRejectByProblemId(id);
+    }
     const deleted = await this.problemRepository.delete(id);
     if (!deleted) {
       throw new NotFoundError(`No se pudo eliminar: el problema con ID ${id} no existe`);

@@ -140,4 +140,14 @@ export class PrismaSuggestionRepository implements ISuggestionRepository {
       return null;
     }
   }
+
+  async unlinkOrRejectByProblemId(problemId: number): Promise<void> {
+    await this.prisma.suggestion.updateMany({
+      where: { problemId },
+      data: {
+        status: "rejected",
+        problemId: null,
+      },
+    });
+  }
 }

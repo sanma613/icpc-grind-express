@@ -23,4 +23,5 @@ export interface ISuggestionRepository {
   findMany(filters: SuggestionQueryFilters): Promise<PaginatedResult<SuggestionEntity>>;
   findById(id: string): Promise<SuggestionEntity | null>;
   updateStatus(id: string, status: SuggestionStatus, problemId?: number): Promise<SuggestionEntity | null>;
+  unlinkOrRejectByProblemId(problemId: number): Promise<void>;
 }
