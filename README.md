@@ -4,15 +4,15 @@ API RESTful construida con **Node.js**, **Express**, **TypeScript estricto** y *
 
 ---
 
-## 🚀 Despliegue y Enlaces
+## Despliegue y Enlaces
 
-- **Backend API en Producción (Render / Railway):** *[Próximamente al completar el despliegue]*
-- **Frontend Web App (Next.js 16):** [https://github.com/sanma613/icpc-grind-next](https://github.com/sanma613/icpc-grind-next)
+- **Backend API en Producción (Render):** [https://icpc-grind-express.onrender.com](https://icpc-grind-express.onrender.com)
+- **Frontend Web App (Vercel):** [https://icpc-grind-next.vercel.app](https://icpc-grind-next.vercel.app)
 - **Repositorio Backend:** [https://github.com/sanma613/icpc-grind-express](https://github.com/sanma613/icpc-grind-express)
 
 ---
 
-## 🏛️ Arquitectura en 4 Capas Limpias
+## Arquitectura en 4 Capas Limpias
 
 El código está estructurado respetando la regla de dependencia, desacoplando completamente las reglas de negocio de la base de datos y de la capa HTTP:
 
@@ -47,7 +47,7 @@ src/
 
 ---
 
-## 📋 Endpoints de la API REST
+## Endpoints de la API REST
 
 ### 1. Sistema y Monitoreo
 | Método | Endpoint | Acceso | Descripción |
@@ -80,7 +80,7 @@ src/
 
 ---
 
-## 🔒 Manejo Centralizado de Errores y Seguridad
+## Manejo Centralizado de Errores y Seguridad
 
 - **Sin Stack Traces en Producción:** El middleware `errorHandler.ts` intercepta todos los errores (AppError, ZodError, errores de Prisma como P2002/P2025) y estandariza la respuesta:
   ```json
@@ -94,7 +94,7 @@ src/
 
 ---
 
-## 👤 Credenciales de Prueba (Seed Oficial)
+## Credenciales de Prueba (Seed Oficial)
 
 Pobladas mediante el script `prisma/seed.ts` con contraseñas hasheadas en `bcrypt`:
 
@@ -105,7 +105,7 @@ Pobladas mediante el script `prisma/seed.ts` con contraseñas hasheadas en `bcry
 
 ---
 
-## 🧪 Pruebas Automatizadas (Bonus +3 Puntos)
+## Pruebas Automatizadas (Bonus +3 Puntos)
 
 El proyecto incluye una suite de pruebas automatizadas con **Jest**, **ts-jest (ESM)** y **Supertest** que cubren al 100% los middlewares de autenticación y autorización:
 
@@ -127,7 +127,7 @@ npm test
 
 ---
 
-## 💻 Guía de Instalación y Ejecución Local
+## Guía de Instalación y Ejecución Local
 
 ### Prerrequisitos
 - Node.js 20.x o superior.

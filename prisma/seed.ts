@@ -34,7 +34,7 @@ async function main() {
     },
   });
 
-  console.log(`👤 Creados usuarios de prueba:`);
+  console.log(`Creados usuarios de prueba:`);
   console.log(`   - Admin: ${admin.email} (rol: ${admin.role})`);
   console.log(`   - User:  ${user.email} (rol: ${user.role})`);
 
