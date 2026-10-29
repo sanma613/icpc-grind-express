@@ -8,6 +8,12 @@ import { PrismaProblemRepository } from "../infrastructure/repositories/PrismaPr
 import { ProblemUseCases } from "../application/use-cases/ProblemUseCases.js";
 import { ProblemController } from "./http/controllers/problem.controller.js";
 import { createProblemRouter } from "./http/routes/problem.routes.js";
+import { PrismaUserRepository } from "../infrastructure/repositories/PrismaUserRepository.js";
+import { PasswordHasher } from "../infrastructure/security/PasswordHasher.js";
+import { TokenService } from "../infrastructure/security/TokenService.js";
+import { AuthUseCases } from "../application/use-cases/AuthUseCases.js";
+import { AuthController } from "./http/controllers/auth.controller.js";
+import { createAuthRouter } from "./http/routes/auth.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -17,6 +23,14 @@ export function createApp(): Express {
   const problemUseCases = new ProblemUseCases(problemRepository);
   const problemController = new ProblemController(problemUseCases);
   const problemRouter = createProblemRouter(problemController);
+
+  // Inyección de dependencias para el módulo de autenticación
+  const userRepository = new PrismaUserRepository(prisma);
+  const passwordHasher = new PasswordHasher();
+  const tokenService = new TokenService();
+  const authUseCases = new AuthUseCases(userRepository, passwordHasher, tokenService);
+  const authController = new AuthController(authUseCases);
+  const authRouter = createAuthRouter(authController);
 
   // Configuración de CORS permitiendo orígenes del frontend
   app.use(
@@ -48,6 +62,7 @@ export function createApp(): Express {
 
   // Montar rutas base
   app.use("/health", healthRouter);
+  app.use("/api/auth", authRouter);
   app.use("/api/problems", problemRouter);
 
   // Manejo centralizado de rutas no encontradas (404)
