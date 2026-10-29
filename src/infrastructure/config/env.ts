@@ -7,6 +7,7 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.string().default("4000").transform((val) => parseInt(val, 10)),
   DATABASE_URL: z.string().default("postgresql://postgres:postgres@localhost:5432/icpc_grind?schema=public"),
+  DIRECT_URL: z.string().optional(),
   JWT_SECRET: z.string().default("icpc_grind_super_secret_jwt_key_2026_production"),
   JWT_EXPIRES_IN: z.string().default("7d"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
