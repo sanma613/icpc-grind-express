@@ -14,6 +14,10 @@ import { TokenService } from "../infrastructure/security/TokenService.js";
 import { AuthUseCases } from "../application/use-cases/AuthUseCases.js";
 import { AuthController } from "./http/controllers/auth.controller.js";
 import { createAuthRouter } from "./http/routes/auth.routes.js";
+import { PrismaSuggestionRepository } from "../infrastructure/repositories/PrismaSuggestionRepository.js";
+import { SuggestionUseCases } from "../application/use-cases/SuggestionUseCases.js";
+import { SuggestionController } from "./http/controllers/suggestion.controller.js";
+import { createSuggestionRouter } from "./http/routes/suggestion.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -31,6 +35,12 @@ export function createApp(): Express {
   const authUseCases = new AuthUseCases(userRepository, passwordHasher, tokenService);
   const authController = new AuthController(authUseCases);
   const authRouter = createAuthRouter(authController);
+
+  // Inyección de dependencias para el módulo de sugerencias (interacción)
+  const suggestionRepository = new PrismaSuggestionRepository(prisma);
+  const suggestionUseCases = new SuggestionUseCases(suggestionRepository, problemRepository);
+  const suggestionController = new SuggestionController(suggestionUseCases);
+  const suggestionRouter = createSuggestionRouter(suggestionController);
 
   // Configuración de CORS permitiendo orígenes del frontend
   app.use(
@@ -64,6 +74,7 @@ export function createApp(): Express {
   app.use("/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/problems", problemRouter);
+  app.use("/api/suggestions", suggestionRouter);
 
   // Manejo centralizado de rutas no encontradas (404)
   app.use((_req, res) => {
