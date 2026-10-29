@@ -42,10 +42,22 @@ export function createApp(): Express {
   const suggestionController = new SuggestionController(suggestionUseCases);
   const suggestionRouter = createSuggestionRouter(suggestionController);
 
-  // Configuración de CORS permitiendo orígenes del frontend
+  // Configuración de CORS permitiendo orígenes del frontend (localhost, Vercel y orígenes en env)
+  const allowedOrigins = env.CORS_ORIGIN.split(",").map((o) => o.trim());
   app.use(
     cors({
-      origin: [env.CORS_ORIGIN, "http://localhost:3000"],
+      origin: (origin, callback) => {
+        // Permitir solicitudes directas sin origin (como curl, mobile apps, Postman)
+        if (!origin) return callback(null, true);
+        if (
+          allowedOrigins.includes(origin) ||
+          origin === "http://localhost:3000" ||
+          origin.endsWith(".vercel.app")
+        ) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Bloqueado por política de CORS para el origen: ${origin}`));
+      },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
