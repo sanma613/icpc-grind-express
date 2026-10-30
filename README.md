@@ -177,3 +177,47 @@ npm run build
 npm start
 ```
 Abre [http://localhost:4000/health](http://localhost:4000/health) para verificar el estado de salud.
+
+---
+
+## Decisiones Técnicas
+
+### 1. Flujo completo de autenticación (Login)
+1. El usuario completa sus credenciales en `LoginForm` (`email` y `password`) y envía el formulario.
+2. `auth.service.ts` despacha una solicitud `POST /api/auth/login` hacia la API en Express.
+3. En el backend, el middleware `validate` comprueba el esquema Zod; `AuthUseCases.login` busca al usuario en PostgreSQL y verifica la contraseña con `bcrypt.compare`.
+4. Si las credenciales coinciden, `TokenService` emite un JWT firmado con `JWT_SECRET`, vigencia de 7 días y payload mínimo (`sub`, `email`, `role`).
+5. El frontend recibe el token y `session.service.ts` lo almacena tanto en `localStorage` (para peticiones API del cliente HTTP) como en cookies `icpc_token` e `icpc_role` (`SameSite=Lax`, `Path=/`).
+6. `useAuth` actualiza el estado global de React y redirige al usuario a `/mis-sugerencias` o al catálogo.
+7. Al navegar a una ruta protegida (ej: `/admin`), el servidor en `proxy.ts` (Next 16) intercepta la petición, verifica la cookie y el rol antes de emitir HTML. Posteriormente, `http.ts` adjunta `Authorization: Bearer <token>` en cada consulta al backend, donde los middlewares `authenticate` y `requireRole` validan los permisos.
+
+### 2. Almacenamiento del token y riesgos de seguridad
+- **Ubicación:** El JWT se almacena en `localStorage` y en cookies accesibles por JavaScript.
+- **Riesgo:** La exposición a ataques **XSS (Cross-Site Scripting)**. Si un script malicioso lograra ejecutarse en el navegador, podría leer el token y exfiltrarlo.
+- **Justificación y mitigación:** La alternativa blindada contra XSS son cookies con atributo `HttpOnly` emitidas desde el backend. Sin embargo, para esta entrega se optó por este esquema híbrido para permitir:
+  1. La inyección explícita del encabezado `Authorization: Bearer <token>` visible en la pestaña Network requerida por la rúbrica.
+  2. La validación inmediata en el servidor de Next.js (`proxy.ts`) sin requerir roundtrips síncronos adicionales en cada render.
+  3. El riesgo se mitiga mediante la arquitectura de componentes de React (que escapa cadenas por defecto contra inyecciones HTML), tipado estricto en TypeScript y validación rigurosa de inputs.
+
+### 3. Diferencia entre HTTP 401 y 403 con ejemplos reales del proyecto
+- **401 Unauthorized (Falta o falla de autenticación - ¿Quién eres?):**
+  - Ocurre cuando el cliente no envía credenciales o el token no es válido o ya expiró.
+  - *Ejemplo real 1:* Intentar consultar `GET /api/suggestions/mias` o enviar `POST /api/suggestions` sin cabecera `Authorization` o con un token alterado.
+  - *Ejemplo real 2:* Ingresar una contraseña incorrecta en `POST /api/auth/login` (responde `401 Credenciales inválidas` de forma genérica).
+- **403 Forbidden (Falta de autorización o permisos - Sé quién eres, pero no tienes permiso):**
+  - Ocurre cuando el usuario está correctamente autenticado con un JWT válido, pero su rol no tiene privilegios para ejecutar la acción solicitada.
+  - *Ejemplo real:* Un usuario con rol `user` (`user@icpc.org`) que intenta ejecutar `DELETE /api/problems/1` o `POST /api/problems`. El backend reconoce su identidad, pero el middleware `requireRole("admin")` deniega la operación con `403`.
+
+### 4. Uso de Inteligencia Artificial y correcciones realizadas
+- **Para qué se usó:** Como asistente de desarrollo en pair-programming para acelerar el andamiaje (*scaffolding*) de la arquitectura en 4 capas limpias en Express + TypeScript, el tipado de contratos de repositorios y la adaptación de los estilos de la Entrega 1 a clases utilitarias de Tailwind CSS v4.
+- **Qué se tuvo que corregir y ajustar manualmente:**
+  - *Normalización de filtros en la API:* Zod rechazaba peticiones con `?topic=all&difficulty=all` con error 400; se implementó `.transform()` en los DTOs del backend y se limpiaron parámetros vacíos en `problem.service.ts`.
+  - *Consistencia en moderación:* Se rediseñó el flujo de sugerencias para que por defecto muestre la bandeja `Pending Review (Inbox)`, retirando botones de acción en elementos ya aprobados y sincronizando la base de datos al eliminar problemas del catálogo.
+  - *Compatibilidad Next.js 16:* Se adaptó el middleware al nuevo estándar `proxy.ts`, resolviendo la decodificación de cookies y la protección SSR.
+  - *Eliminación de emojis:* Se removieron todos los emojis en componentes, scripts de backend, logs de consola y documentación para garantizar un estándar sobrio y profesional.
+
+---
+
+## Evidencia de Integración de Red (Pestaña Network)
+
+*(Pestaña Network de DevTools evidenciando llamadas HTTP 200 OK con token Bearer hacia el backend desplegado en Render).*
