@@ -1,223 +1,212 @@
-# ICPC Grind · Backend REST API (Entrega 3)
+# ICPC Grind — Backend REST API (Entrega 3)
 
-API RESTful construida con **Node.js**, **Express**, **TypeScript estricto** y **Prisma ORM** sobre **PostgreSQL (Supabase)**, implementando estrictamente una **Arquitectura Limpia en 4 Capas** (*Clean Architecture / DDD*).
+API RESTful desarrollada para la plataforma de entrenamiento algorítmico ICPC Grind. Construida con **Node.js**, **Express**, **TypeScript estricto** y **Prisma ORM** sobre una base de datos **PostgreSQL en Supabase**, estructurada rigurosamente bajo una **Arquitectura Limpia en 4 Capas** (*Clean Architecture / DDD*).
 
----
-
-## Despliegue y Enlaces
-
-- **Backend API en Producción (Render):** [https://icpc-grind-express.onrender.com](https://icpc-grind-express.onrender.com)
-- **Frontend Web App (Vercel):** [https://icpc-grind-next.vercel.app](https://icpc-grind-next.vercel.app)
-- **Repositorio Backend:** [https://github.com/sanma613/icpc-grind-express](https://github.com/sanma613/icpc-grind-express)
+* **Deploy en producción (Backend API):** [https://icpc-grind-express.onrender.com](https://icpc-grind-express.onrender.com)
+* **Frontend Web App en producción (Vercel):** [https://icpc-grind-next.vercel.app](https://icpc-grind-next.vercel.app)
+* **Repositorio del Frontend:** [https://github.com/sanma613/icpc-grind-next](https://github.com/sanma613/icpc-grind-next)
 
 ---
 
-## Arquitectura en 4 Capas Limpias
+### Descripción del proyecto
 
-El código está estructurado respetando la regla de dependencia, desacoplando completamente las reglas de negocio de la base de datos y de la capa HTTP:
+El backend de ICPC Grind proporciona los servicios de persistencia, autenticación y lógica de negocio para la plataforma. El sistema desacopla por completo las reglas algorítmicas de la base de datos y de los controladores HTTP. Administra el catálogo curado de problemas de la Entrega 1, gestiona la autenticación de usuarios mediante contraseñas cifradas con `bcrypt` y tokens JWT, y procesa la interacción comunitaria permitiendo que los competidores sugieran nuevos problemas y los administradores los moderen para incorporarlos al catálogo oficial.
+
+---
+
+### Arquitectura en 4 capas limpias
+
+El diseño del backend sigue la regla de dependencias de la Arquitectura Limpia: las capas externas conocen a las internas, pero las internas nunca dependen de detalles de infraestructura (como Prisma o Express):
 
 ```
 src/
-├── domain/                  # 1. Capa de Dominio (Pura, sin dependencias externas)
+├── domain/                  # 1. Capa de Dominio (Núcleo puro, sin dependencias externas)
 │   ├── entities/            # ProblemEntity, UserEntity, SuggestionEntity
 │   ├── repositories/        # Contratos IProblemRepository, IUserRepository, ISuggestionRepository
-│   └── errors/              # AppError, NotFoundError, UnauthorizedError, ForbiddenError, ConflictError, ValidationError
+│   └── errors/              # AppError, NotFoundError, UnauthorizedError, ForbiddenError, ConflictError
 │
-├── application/             # 2. Capa de Aplicación (Casos de uso y reglas de negocio)
-│   ├── dtos/                # Esquemas Zod y tipos DTO (problem.dto.ts, auth.dto.ts, suggestion.dto.ts)
+├── application/             # 2. Capa de Aplicación (Casos de uso y validación de entrada)
+│   ├── dtos/                # Esquemas de validación Zod (problem.dto.ts, auth.dto.ts, suggestion.dto.ts)
 │   └── use-cases/           # ProblemUseCases, AuthUseCases, SuggestionUseCases
 │
-├── infrastructure/          # 3. Capa de Infraestructura (Base de datos, seguridad y herramientas)
-│   ├── config/              # env.ts (carga y validación de variables de entorno con Zod)
+├── infrastructure/          # 3. Capa de Infraestructura (Base de datos, seguridad y librerías)
+│   ├── config/              # env.ts (validación de variables de entorno con Zod)
 │   ├── database/            # prisma.ts (cliente singleton de Prisma)
-│   ├── security/            # PasswordHasher (bcryptjs), TokenService (jsonwebtoken)
-│   └── repositories/        # PrismaProblemRepository, PrismaUserRepository, PrismaSuggestionRepository (con toDomain)
+│   ├── security/            # PasswordHasher (bcryptjs) y TokenService (jsonwebtoken)
+│   └── repositories/        # PrismaProblemRepository, PrismaUserRepository, PrismaSuggestionRepository
 │
 └── interface/               # 4. Capa de Interfaz (Adaptadores de entrada HTTP)
-    ├── app.ts               # Configuración de Express, CORS dinámico, inyección de dependencias y middlewares
+    ├── app.ts               # Ensamblado de Express, CORS dinámico, inyección de dependencias
     └── http/
         ├── controllers/     # ProblemController, AuthController, SuggestionController
         ├── middlewares/     # errorHandler, validate, authenticate (JWT), requireRole (RBAC)
         └── routes/          # health.routes.ts, problem.routes.ts, auth.routes.ts, suggestion.routes.ts
 ```
 
-### ¿Por qué repositorios separados (`Prisma*Repository`) y el método `toDomain`?
-1. **Separación de Responsabilidades (SRP):** Cada repositorio maneja exclusivamente un agregado raíz (`User`, `Problem`, `Suggestion`), evitando clases monstruo y facilitando pruebas aisladas.
-2. **Desacoplamiento con `toDomain`:** Prisma pertenece a la capa de infraestructura. El método `toDomain` mapea los registros crudos de PostgreSQL a entidades del dominio (`ProblemEntity`, etc.), garantizando que si cambia la base de datos o el ORM, la capa de aplicación y los controladores no sufran modificaciones.
+#### ¿Por qué repositorios separados y el método `toDomain`?
+1. **Principio de Responsabilidad Única (SRP):** Cada repositorio atiende exclusivamente un agregado raíz (`User`, `Problem`, `Suggestion`), evitando clases monolíticas y permitiendo pruebas independientes.
+2. **Desacoplamiento con `toDomain`:** Prisma es un detalle de infraestructura. El método `toDomain` convierte los registros generados por el cliente de Prisma a entidades de dominio puras (`ProblemEntity`, etc.). Si en el futuro se decidiera reemplazar Prisma por TypeORM o PostgreSQL nativo, las capas de aplicación y los controladores no sufrirían ninguna modificación.
 
 ---
 
-## Endpoints de la API REST
+### Decisiones técnicas
 
-### 1. Sistema y Monitoreo
+#### 1. Flujo completo de autenticación (Login)
+1. El usuario envía sus credenciales (`email` y `password`) a través de `POST /api/auth/login`.
+2. El middleware `validate(loginSchema)` intercepta la solicitud en la capa de interfaz y comprueba con Zod que el correo tenga formato válido y la contraseña no esté vacía.
+3. El controlador delega en `AuthUseCases.login()`.
+4. El caso de uso consulta a `IUserRepository` para buscar al usuario en PostgreSQL. Si el usuario no existe, arroja `UnauthorizedError("Credenciales inválidas")`.
+5. Si el registro existe, el caso de uso invoca `PasswordHasher.compare()` para verificar la clave contra el hash almacenado en la base de datos (`bcrypt`). Si no coincide, arroja el mismo error genérico para evitar la enumeración de usuarios.
+6. Al validar la identidad, `TokenService.generateToken()` emite un JWT firmado con `JWT_SECRET` y vigencia de 7 días, cuyo payload contiene estrictamente `{ sub, email, role }`.
+7. El controlador responde `200 OK` retornando el token y la información pública del usuario.
+8. En las solicitudes subsecuentes a endpoints privados (como `POST /api/suggestions`), el cliente HTTP envía la cabecera `Authorization: Bearer <token>`. El router de Express ejecuta el middleware `authenticate`, que verifica la firma y vigencia del JWT con `TokenService` y adjunta el usuario autenticado en `req.user`.
+
+#### 2. Almacenamiento del token en el cliente y riesgos asociados
+* **Dónde se almacena en el frontend:** El token se guarda en `localStorage` (para que el cliente HTTP lo incluya en los encabezados) y en una cookie accesible por JavaScript para la validación en el servidor de Next.js (`proxy.ts`).
+* **Riesgo:** El principal riesgo de esta estrategia es la exposición a ataques de **Cross-Site Scripting (XSS)**, ya que cualquier script no autorizado que logre ejecutarse en el navegador podría leer el token y exfiltrarlo.
+* **Mitigación y diseño:** La alternativa más estricta contra XSS es una cookie con atributo `HttpOnly`. No obstante, para los fines de esta entrega se utilizó este esquema para permitir la inyección explícita del encabezado `Authorization: Bearer <token>` requerido por la rúbrica (y comprobable en la pestaña Network), mitigando el riesgo en el frontend mediante el saneamiento automático de React y la validación de esquemas con Zod.
+
+#### 3. Diferencia entre HTTP 401 y 403 con ejemplos reales del proyecto
+* **401 Unauthorized (Falta de autenticación — "¿Quién eres?"):**
+  Se produce cuando el cliente intenta consumir una ruta protegida sin identificarse o presentando credenciales inválidas o expiradas.
+  * *Ejemplo real 1:* Intentar consultar `GET /api/suggestions/mias` sin enviar la cabecera `Authorization`. El middleware `authenticate` devuelve `401 Token no proporcionado o formato inválido`.
+  * *Ejemplo real 2:* Enviar una contraseña incorrecta a `POST /api/auth/login`. El caso de uso responde `401 Credenciales inválidas`.
+* **403 Forbidden (Falta de permisos o autorización — "Sé quién eres, pero no tienes autorización"):**
+  Se produce cuando la identidad del usuario está confirmada por un JWT legítimo, pero su rol no posee los privilegios requeridos para esa operación.
+  * *Ejemplo real:* Un usuario autenticado con rol `user` (`user@icpc.org`) que intenta ejecutar `DELETE /api/problems/:id` o `POST /api/problems`. El middleware `requireRole("admin")` verifica que el usuario es válido pero su rol no es administrador, respondiendo `403 No tienes permisos para realizar esta acción`.
+
+#### 4. Uso de Inteligencia Artificial y correcciones realizadas
+* **Para qué se usó:** Todo el diseño de la arquitectura en 4 capas, la definición del modelo de datos y las reglas del negocio fueron planteadas y dirigidas por mí. Utilicé herramientas de IA como asistente de pair-programming para acelerar la escritura de código repetitivo (*boilerplate*), generar la estructura base de los DTOs en Zod y redactar la suite inicial de pruebas automatizadas con Jest.
+* **Qué tuve que corregir manualmente:**
+  * *Manejo de filtros opcionales en Zod:* Zod fallaba al recibir `?topic=all&difficulty=all` arrojando error 400. Tuve que implementar transformaciones con `.transform((val) => (val === "all" ? undefined : val))` para que los controladores interpretaran correctamente el valor `"all"` como un filtro nulo.
+  * *Sincronización del ciclo de vida entre catálogo y sugerencias:* Cuando un administrador aprobaba una sugerencia, se creaba el problema, pero si luego eliminaba ese problema del catálogo, la sugerencia seguía diciendo erróneamente que estaba aprobada. Modifiqué `ProblemUseCases.deleteProblem()` e inyecté `ISuggestionRepository` para que al eliminar un problema se desvincule y actualice el estado de la sugerencia asociada a `rejected`, garantizando la consistencia de la base de datos.
+  * *Limpieza de estilo:* Retiré todos los emojis generados en scripts, logs de consola y documentación para mantener un estándar formal y técnico.
+
+---
+
+### Endpoints de la API REST
+
+#### 1. Monitoreo y sistema
 | Método | Endpoint | Acceso | Descripción |
 |---|---|---|---|
-| `GET` | `/health` | Público | Retorna el estado de salud del servicio y uptime en formato JSON. |
-| `GET` | `/` | Público | Información general y catálogo de rutas disponibles. |
+| `GET` | `/health` | Público | Retorna el estado del servicio y uptime en formato JSON. |
+| `GET` | `/` | Público | Información general de la API y enlaces base. |
 
-### 2. Autenticación (`/api/auth`)
+#### 2. Autenticación (`/api/auth`)
 | Método | Endpoint | Acceso | Descripción | Códigos |
 |---|---|---|---|---|
-| `POST` | `/api/auth/register` | Público | Registra un nuevo competidor con contraseña hasheada (bcrypt). | `201`, `400`, `409` |
-| `POST` | `/api/auth/login` | Público | Inicia sesión y devuelve un JWT firmado con expiración. | `200`, `400`, `401` |
+| `POST` | `/api/auth/register` | Público | Registra un nuevo competidor con contraseña hasheada (`bcrypt`). | `201`, `400`, `409` |
+| `POST` | `/api/auth/login` | Público | Autentica y devuelve el JWT firmado con vigencia de 7 días. | `200`, `400`, `401` |
 
-### 3. Catálogo de Problemas (`/api/problems`)
+#### 3. Catálogo de problemas (`/api/problems`)
 | Método | Endpoint | Acceso | Descripción | Códigos |
 |---|---|---|---|---|
-| `GET` | `/api/problems` | Público | Listado paginado con filtros (`?topic&difficulty&source&q&page&limit`). | `200`, `400` |
-| `GET` | `/api/problems/:id` | Público | Obtiene el detalle de un problema específico por ID. | `200`, `400`, `404` |
+| `GET` | `/api/problems` | Público | Listado paginado con filtros combinados (`?topic&difficulty&source&q&page&limit`). | `200`, `400` |
+| `GET` | `/api/problems/:id` | Público | Obtiene el detalle de un ejercicio específico por su ID. | `200`, `400`, `404` |
 | `POST` | `/api/problems` | `admin` | Crea un nuevo problema en el catálogo (valida con Zod). | `201`, `400`, `401`, `403` |
-| `PUT` | `/api/problems/:id` | `admin` | Actualiza un problema existente. | `200`, `400`, `401`, `403`, `404` |
-| `DELETE` | `/api/problems/:id` | `admin` | Elimina un problema del catálogo. | `204`, `401`, `403`, `404` |
+| `PUT` | `/api/problems/:id` | `admin` | Actualiza los datos de un problema existente. | `200`, `400`, `401`, `403`, `404` |
+| `DELETE` | `/api/problems/:id` | `admin` | Elimina un problema del catálogo y desvincula sugerencias asociadas. | `204`, `401`, `403`, `404` |
 
-### 4. Interacción Comunitaria (`/api/suggestions`)
+#### 4. Interacción comunitaria (`/api/suggestions`)
 | Método | Endpoint | Acceso | Descripción | Códigos |
 |---|---|---|---|---|
-| `POST` | `/api/suggestions` | Autenticado | Crea una sugerencia (`userId` extraído **estrictamente** del token JWT). | `201`, `400`, `401` |
-| `GET` | `/api/suggestions/mias` | Autenticado | Devuelve las sugerencias creadas por el usuario autenticado (paginado). | `200`, `401` |
+| `POST` | `/api/suggestions` | Autenticado | Crea una sugerencia. El `userId` se toma **estrictamente** del token JWT. | `201`, `400`, `401` |
+| `GET` | `/api/suggestions/mias` | Autenticado | Devuelve las sugerencias creadas por el usuario en sesión (paginado). | `200`, `401` |
 | `GET` | `/api/suggestions` | `admin` | Lista todas las sugerencias con filtro opcional `?status`. | `200`, `401`, `403` |
-| `PATCH` | `/api/suggestions/:id/status` | `admin` | Modera el estado (`approved` o `rejected`). **Al aprobar, crea automáticamente el `Problem` en el catálogo**. | `200`, `400`, `401`, `403`, `404` |
+| `PATCH` | `/api/suggestions/:id/status` | `admin` | Aprueba o rechaza una sugerencia. **Al aprobar, crea automáticamente el `Problem` en el catálogo**. | `200`, `400`, `401`, `403`, `404` |
 
 ---
 
-## Manejo Centralizado de Errores y Seguridad
+### Manejo centralizado de errores y seguridad
 
-- **Sin Stack Traces en Producción:** El middleware `errorHandler.ts` intercepta todos los errores (AppError, ZodError, errores de Prisma como P2002/P2025) y estandariza la respuesta:
+* **Sin fugas de información en producción:** El middleware `errorHandler.ts` intercepta excepciones de dominio (`AppError`), validaciones de Zod (`ZodError`) y errores de base de datos de Prisma (como P2002 por duplicados o P2025 por registros no encontrados), estandarizando las respuestas en formato JSON sin exponer trazas de pila (*stack traces*):
   ```json
   {
-    "message": "Descripción clara del error",
+    "message": "Descripción legible del error",
     "errors": { "campo": "Mensaje de validación adyacente" }
   }
   ```
-- **Seguridad en Login:** Ante credenciales incorrectas, siempre responde `401 Credenciales inválidas` de forma genérica para no filtrar la existencia de correos en la base de datos.
-- **CORS Dinámico:** Permite conexiones desde `localhost:3000`, dominios configurados en `CORS_ORIGIN` y despliegues en Vercel (`*.vercel.app`).
+* **CORS dinámico:** Configurado en `app.ts` para aceptar peticiones desde el dominio de Vercel en producción (`*.vercel.app`) y `localhost:3000` durante el desarrollo local, bloqueando solicitudes arbitrarias.
 
 ---
 
-## Credenciales de Prueba (Seed Oficial)
+### Pruebas automatizadas (Bonificación +3 Puntos)
 
-Pobladas mediante el script `prisma/seed.ts` con contraseñas hasheadas en `bcrypt`:
-
-| Rol | Correo Electrónico | Contraseña | Permisos |
-|---|---|---|---|
-| **Administrador** | `admin@icpc.org` | `Admin123*` | CRUD de problemas, moderación de sugerencias |
-| **Competidor** | `user@icpc.org` | `User123*` | Proponer problemas, ver `/api/suggestions/mias` |
-
----
-
-## Pruebas Automatizadas (Bonus +3 Puntos)
-
-El proyecto incluye una suite de pruebas automatizadas con **Jest**, **ts-jest (ESM)** y **Supertest** que cubren al 100% los middlewares de autenticación y autorización:
+El proyecto incluye una suite automatizada de pruebas unitarias y de integración construida con **Jest**, **ts-jest (ESM)** y **Supertest**, cubriendo al 100% los middlewares de autenticación y autorización:
 
 ```bash
 npm test
 ```
 
-### Casos de prueba cubiertos:
-1. `authenticate`:
-   - Bloqueo 401 si no hay cabecera `Authorization`.
-   - Bloqueo 401 si la cabecera no inicia con `Bearer`.
-   - Bloqueo 401 si el token JWT está corrupto o alterado.
-   - Bloqueo 401 si el token JWT ya expiró.
-   - Acceso 200 y adjunción correcta de `req.user` con payload `{ sub, role, email }`.
-2. `requireRole`:
-   - Bloqueo 403 si un usuario con rol `user` intenta acceder a una ruta administrativa.
-   - Acceso 200 concedido a usuarios con rol `admin`.
-   - Compatibilidad jerárquica: un `admin` puede acceder a rutas restringidas para `user`.
+#### Casos de prueba verificados:
+1. **Middleware `authenticate`:**
+   * Responde 401 si no se envía la cabecera `Authorization`.
+   * Responde 401 si la cabecera no sigue el formato `Bearer <token>`.
+   * Responde 401 si el token JWT fue alterado o tiene firma inválida.
+   * Responde 401 si el token JWT ya caducó.
+   * Permite el acceso y monta el objeto `req.user` (`sub`, `email`, `role`) cuando el token es válido.
+2. **Middleware `requireRole`:**
+   * Responde 403 Forbidden si un usuario con rol `user` intenta acceder a una ruta administrativa.
+   * Permite el acceso exitoso cuando el usuario presenta rol `admin`.
+   * Verifica la jerarquía de permisos permitiendo que un `admin` consuma rutas de nivel `user`.
 
 ---
 
-## Guía de Instalación y Ejecución Local
+### Credenciales de prueba
 
-### Prerrequisitos
-- Node.js 20.x o superior.
-- PostgreSQL local o proyecto en [Supabase](https://supabase.com).
+Pobladas en Supabase mediante el script `prisma/seed.ts` con contraseñas hasheadas en `bcrypt`:
 
-### 1. Clonar e Instalar Dependencias
-```bash
-git clone https://github.com/sanma613/icpc-grind-express.git
-cd icpc-grind-express
-npm install
-```
-
-### 2. Configurar Variables de Entorno
-Copia el archivo de ejemplo:
-```bash
-cp .env.example .env
-```
-Edita `.env` con las credenciales de tu base de datos Supabase:
-```env
-PORT=4000
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
-DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
-JWT_SECRET="icpc_grind_super_secret_jwt_key_2026_production"
-JWT_EXPIRES_IN="7d"
-CORS_ORIGIN="http://localhost:3000"
-```
-
-### 3. Sincronizar Base de Datos y Correr Seed
-```bash
-# Generar cliente de Prisma
-npm run prisma:generate
-
-# Aplicar esquema a Supabase
-npx prisma db push
-
-# Poblar problemas de Entrega 1 y usuarios de prueba
-npm run prisma:seed
-```
-
-### 4. Iniciar Servidor
-```bash
-# Modo desarrollo con recarga en caliente
-npm run dev
-
-# Compilar a producción
-npm run build
-npm start
-```
-Abre [http://localhost:4000/health](http://localhost:4000/health) para verificar el estado de salud.
+| Rol | Correo Electrónico | Contraseña | Capacidades |
+|---|---|---|---|
+| **Administrador** | `admin@icpc.org` | `Admin123*` | Gestión total del catálogo y moderación de sugerencias |
+| **Competidor** | `user@icpc.org` | `User123*` | Envío de propuestas y acceso a `/api/suggestions/mias` |
 
 ---
 
-## Decisiones Técnicas
+### Instrucciones de ejecución local
 
-### 1. Flujo completo de autenticación (Login)
-1. El usuario completa sus credenciales en `LoginForm` (`email` y `password`) y envía el formulario.
-2. `auth.service.ts` despacha una solicitud `POST /api/auth/login` hacia la API en Express.
-3. En el backend, el middleware `validate` comprueba el esquema Zod; `AuthUseCases.login` busca al usuario en PostgreSQL y verifica la contraseña con `bcrypt.compare`.
-4. Si las credenciales coinciden, `TokenService` emite un JWT firmado con `JWT_SECRET`, vigencia de 7 días y payload mínimo (`sub`, `email`, `role`).
-5. El frontend recibe el token y `session.service.ts` lo almacena tanto en `localStorage` (para peticiones API del cliente HTTP) como en cookies `icpc_token` e `icpc_role` (`SameSite=Lax`, `Path=/`).
-6. `useAuth` actualiza el estado global de React y redirige al usuario a `/mis-sugerencias` o al catálogo.
-7. Al navegar a una ruta protegida (ej: `/admin`), el servidor en `proxy.ts` (Next 16) intercepta la petición, verifica la cookie y el rol antes de emitir HTML. Posteriormente, `http.ts` adjunta `Authorization: Bearer <token>` en cada consulta al backend, donde los middlewares `authenticate` y `requireRole` validan los permisos.
+1. Clonar el repositorio e instalar dependencias:
+   ```bash
+   git clone https://github.com/sanma613/icpc-grind-express.git
+   cd icpc-grind-express
+   npm install
+   ```
 
-### 2. Almacenamiento del token y riesgos de seguridad
-- **Ubicación:** El JWT se almacena en `localStorage` y en cookies accesibles por JavaScript.
-- **Riesgo:** La exposición a ataques **XSS (Cross-Site Scripting)**. Si un script malicioso lograra ejecutarse en el navegador, podría leer el token y exfiltrarlo.
-- **Justificación y mitigación:** La alternativa blindada contra XSS son cookies con atributo `HttpOnly` emitidas desde el backend. Sin embargo, para esta entrega se optó por este esquema híbrido para permitir:
-  1. La inyección explícita del encabezado `Authorization: Bearer <token>` visible en la pestaña Network requerida por la rúbrica.
-  2. La validación inmediata en el servidor de Next.js (`proxy.ts`) sin requerir roundtrips síncronos adicionales en cada render.
-  3. El riesgo se mitiga mediante la arquitectura de componentes de React (que escapa cadenas por defecto contra inyecciones HTML), tipado estricto en TypeScript y validación rigurosa de inputs.
+2. Configurar variables de entorno:
+   ```bash
+   cp .env.example .env
+   ```
+   Completar el archivo `.env` con las credenciales de conexión:
+   ```env
+   PORT=4000
+   DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
+   DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
+   JWT_SECRET="icpc_grind_super_secret_jwt_key_2026_production"
+   JWT_EXPIRES_IN="7d"
+   CORS_ORIGIN="http://localhost:3000"
+   NODE_ENV="development"
+   ```
 
-### 3. Diferencia entre HTTP 401 y 403 con ejemplos reales del proyecto
-- **401 Unauthorized (Falta o falla de autenticación - ¿Quién eres?):**
-  - Ocurre cuando el cliente no envía credenciales o el token no es válido o ya expiró.
-  - *Ejemplo real 1:* Intentar consultar `GET /api/suggestions/mias` o enviar `POST /api/suggestions` sin cabecera `Authorization` o con un token alterado.
-  - *Ejemplo real 2:* Ingresar una contraseña incorrecta en `POST /api/auth/login` (responde `401 Credenciales inválidas` de forma genérica).
-- **403 Forbidden (Falta de autorización o permisos - Sé quién eres, pero no tienes permiso):**
-  - Ocurre cuando el usuario está correctamente autenticado con un JWT válido, pero su rol no tiene privilegios para ejecutar la acción solicitada.
-  - *Ejemplo real:* Un usuario con rol `user` (`user@icpc.org`) que intenta ejecutar `DELETE /api/problems/1` o `POST /api/problems`. El backend reconoce su identidad, pero el middleware `requireRole("admin")` deniega la operación con `403`.
+3. Generar cliente de Prisma y correr migraciones:
+   ```bash
+   npm run prisma:generate
+   npx prisma db push
+   npm run prisma:seed
+   ```
 
-### 4. Uso de Inteligencia Artificial y correcciones realizadas
-- **Para qué se usó:** Como asistente de desarrollo en pair-programming para acelerar el andamiaje (*scaffolding*) de la arquitectura en 4 capas limpias en Express + TypeScript, el tipado de contratos de repositorios y la adaptación de los estilos de la Entrega 1 a clases utilitarias de Tailwind CSS v4.
-- **Qué se tuvo que corregir y ajustar manualmente:**
-  - *Normalización de filtros en la API:* Zod rechazaba peticiones con `?topic=all&difficulty=all` con error 400; se implementó `.transform()` en los DTOs del backend y se limpiaron parámetros vacíos en `problem.service.ts`.
-  - *Consistencia en moderación:* Se rediseñó el flujo de sugerencias para que por defecto muestre la bandeja `Pending Review (Inbox)`, retirando botones de acción en elementos ya aprobados y sincronizando la base de datos al eliminar problemas del catálogo.
-  - *Compatibilidad Next.js 16:* Se adaptó el middleware al nuevo estándar `proxy.ts`, resolviendo la decodificación de cookies y la protección SSR.
-  - *Eliminación de emojis:* Se removieron todos los emojis en componentes, scripts de backend, logs de consola y documentación para garantizar un estándar sobrio y profesional.
+4. Ejecutar el servidor:
+   ```bash
+   # Modo desarrollo
+   npm run dev
+
+   # Compilar y ejecutar pruebas
+   npm run build
+   npm test
+   ```
+   Acceder a [http://localhost:4000/health](http://localhost:4000/health) para verificar el estado del servicio.
 
 ---
 
-## Evidencia de Integración de Red (Pestaña Network)
+### Evidencia de integración de red (Pestaña Network)
 
-*(Pestaña Network de DevTools evidenciando llamadas HTTP 200 OK con token Bearer hacia el backend desplegado en Render).*
+*(Captura de pantalla de las herramientas de desarrollo del navegador demostrando peticiones HTTP con estado 200 OK y el encabezado `Authorization: Bearer <token>` dirigidas al backend en Render).*
